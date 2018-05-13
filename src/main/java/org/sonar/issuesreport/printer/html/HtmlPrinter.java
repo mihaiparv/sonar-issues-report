@@ -20,13 +20,15 @@
 package org.sonar.issuesreport.printer.html;
 
 import com.google.common.collect.Maps;
+
 import freemarker.log.Logger;
 import freemarker.template.Template;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.slf4j.LoggerFactory;
-import org.sonar.api.config.Settings;
-import org.sonar.api.scan.filesystem.ModuleFileSystem;
+import org.sonar.api.batch.fs.FileSystem;
+import org.sonar.api.config.Configuration;
+import org.sonar.api.utils.log.Loggers;
 import org.sonar.issuesreport.IssuesReportPlugin;
 import org.sonar.issuesreport.printer.ReportPrinter;
 import org.sonar.issuesreport.provider.RuleNameProvider;
@@ -45,44 +47,46 @@ import java.util.Map;
 
 public class HtmlPrinter implements ReportPrinter {
 
-  private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(HtmlPrinter.class);
+  private static final org.sonar.api.utils.log.Logger LOG = Loggers.get(HtmlPrinter.class);
 
   private final RuleNameProvider ruleNameProvider;
-  private final ModuleFileSystem fs;
-  private Settings settings;
+  private final FileSystem fs;
+  private Configuration settings;
 
   private SourceProvider sourceProvider;
 
-  public HtmlPrinter(RuleNameProvider ruleNameProvider, SourceProvider sourceProvider, ModuleFileSystem fs, Settings settings) {
+  public HtmlPrinter(RuleNameProvider ruleNameProvider, SourceProvider sourceProvider, FileSystem fs, Configuration settings) {
     this.ruleNameProvider = ruleNameProvider;
     this.sourceProvider = sourceProvider;
     this.fs = fs;
     this.settings = settings;
   }
 
-  @Override
-  public boolean isEnabled() {
-    return settings.getBoolean(IssuesReportPlugin.HTML_REPORT_ENABLED_KEY);
+  public String getRequiredProperty() {
+    return IssuesReportPlugin.HTML_REPORT_ENABLED_KEY;
   }
 
   public boolean isLightModeOnly() {
-    return settings.getBoolean(IssuesReportPlugin.HTML_REPORT_LIGHTMODE_ONLY);
+    return settings.getBoolean(IssuesReportPlugin.HTML_REPORT_LIGHTMODE_ONLY).orElse(Boolean.FALSE);
   }
 
-  @Override
   public void print(IssuesReport report) {
     File reportFileDir = getReportFileDir();
-    String reportName = settings.getString(IssuesReportPlugin.HTML_REPORT_NAME_KEY);
+    String reportName = settings.get(IssuesReportPlugin.HTML_REPORT_NAME_KEY).orElse(null);
     if (!isLightModeOnly()) {
       File reportFile = new File(reportFileDir, reportName + ".html");
-      LOG.debug("Generating HTML Report to: " + reportFile.getAbsolutePath());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(String.format("Generating HTML Report to: %s", reportFile.getAbsolutePath()));
+      }
       writeToFile(report, reportFile, true);
-      LOG.info("HTML Issues Report generated: " + reportFile.getAbsolutePath());
+      LOG.info(String.format("HTML Issues Report generated: %s", reportFile.getAbsolutePath()));
     }
     File lightReportFile = new File(reportFileDir, reportName + "-light.html");
-    LOG.debug("Generating Light HTML Report to: " + lightReportFile.getAbsolutePath());
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(String.format("Generating Light HTML Report to: %s", lightReportFile.getAbsolutePath()));
+    }
     writeToFile(report, lightReportFile, false);
-    LOG.info("Light HTML Issues Report generated: " + lightReportFile.getAbsolutePath());
+    LOG.info(String.format("Light HTML Issues Report generated: %s", lightReportFile.getAbsolutePath()));
     try {
       copyDependencies(reportFileDir);
     } catch (Exception e) {
@@ -91,13 +95,14 @@ public class HtmlPrinter implements ReportPrinter {
   }
 
   private File getReportFileDir() {
-    String reportFileDirStr = settings.getString(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY);
+    String reportFileDirStr = settings.get(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY).orElse("");
     File reportFileDir = new File(reportFileDirStr);
     if (!reportFileDir.isAbsolute()) {
-      reportFileDir = new File(fs.workingDir(), reportFileDirStr);
+      reportFileDir = new File(fs.workDir(), reportFileDirStr);
     }
     if (reportFileDirStr.endsWith(".html")) {
-      LOG.warn(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY + " should indicate a directory. Using parent folder.");
+      LOG.warn(String.format("%s should indicate a directory. Using parent folder.",
+                             IssuesReportPlugin.HTML_REPORT_LOCATION_KEY));
       reportFileDir = reportFileDir.getParentFile();
     }
     try {
@@ -124,7 +129,7 @@ public class HtmlPrinter implements ReportPrinter {
 
       Template template = cfg.getTemplate("issuesreport.ftl");
       fos = new FileOutputStream(toFile);
-      writer = new OutputStreamWriter(fos, fs.sourceCharset());
+      writer = new OutputStreamWriter(fos, fs.encoding());
       template.process(root, writer);
       writer.flush();
 

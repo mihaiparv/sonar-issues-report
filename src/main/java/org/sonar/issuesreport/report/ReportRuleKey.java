@@ -21,8 +21,8 @@ package org.sonar.issuesreport.report;
 
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.sonar.api.batch.rule.Severity;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RulePriority;
 
 /**
  * A same rule can be present with different severity if severity was manually changed so we need this special key that
@@ -31,9 +31,9 @@ import org.sonar.api.rules.RulePriority;
  */
 public class ReportRuleKey implements Comparable<ReportRuleKey> {
   private final Rule rule;
-  private final RulePriority severity;
+  private final Severity severity;
 
-  public ReportRuleKey(Rule rule, RulePriority severity) {
+  public ReportRuleKey(Rule rule, Severity severity) {
     this.rule = rule;
     this.severity = severity;
   }
@@ -42,7 +42,7 @@ public class ReportRuleKey implements Comparable<ReportRuleKey> {
     return rule;
   }
 
-  public RulePriority getSeverity() {
+  public Severity getSeverity() {
     return severity;
   }
 

@@ -19,64 +19,33 @@
  */
 package org.sonar.issuesreport.printer.console;
 
-import org.junit.Before;
 import org.junit.Test;
-import org.sonar.api.config.PropertyDefinitions;
-import org.sonar.api.config.Settings;
-import org.sonar.api.resources.Project;
 import org.sonar.issuesreport.IssuesReportFakeUtils;
-import org.sonar.issuesreport.IssuesReportPlugin;
-import org.sonar.issuesreport.printer.console.ConsolePrinter.ConsoleLogger;
+import org.sonar.issuesreport.fs.ResourceNode;
 import org.sonar.issuesreport.report.IssuesReport;
-import org.sonar.issuesreport.tree.ResourceNode;
 
-import java.io.IOException;
-import java.util.Date;
-
-import static org.fest.assertions.Assertions.assertThat;
 import static org.mockito.Matchers.contains;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class ConsolePrinterTest {
 
-  private Settings settings;
-  private ConsolePrinter consolePrinter;
-
-  @Before
-  public void prepare() {
-    settings = new Settings(new PropertyDefinitions(IssuesReportPlugin.class));
-    consolePrinter = new ConsolePrinter(settings);
-  }
-
   @Test
-  public void shouldBeDisabledByDefault() {
-    assertThat(consolePrinter.isEnabled()).isFalse();
-  }
+  public void shouldGenerateReportWhenNoViolation() {
+    ConsolePrinter.ConsoleLogger logger = mock(ConsolePrinter.ConsoleLogger.class);
+    ConsolePrinter printer = new ConsolePrinter(logger);
 
-  @Test
-  public void shouldEnableConsoleReport() {
-    settings.setProperty(IssuesReportPlugin.CONSOLE_REPORT_ENABLED_KEY, "true");
-    assertThat(consolePrinter.isEnabled()).isTrue();
-  }
-
-  @Test
-  public void shouldGenerateReportWhenNoViolation() throws IOException {
-    ConsolePrinter printer = new ConsolePrinter(new Settings());
-    Project project = mock(Project.class);
-    when(project.getAnalysisDate()).thenReturn(new Date());
     IssuesReport report = new IssuesReport();
     printer.print(report);
+
+    verify(logger).log(contains("No new issue"));
   }
 
   @Test
-  public void shouldGenerateReportWhenNewViolation() throws IOException {
-    ConsoleLogger logger = mock(ConsoleLogger.class);
-    ConsolePrinter printer = new ConsolePrinter(new Settings(), logger);
+  public void shouldGenerateReportWhenNewViolation() {
+    ConsolePrinter.ConsoleLogger logger = mock(ConsolePrinter.ConsoleLogger.class);
+    ConsolePrinter printer = new ConsolePrinter(logger);
 
-    Project project = mock(Project.class);
-    when(project.getAnalysisDate()).thenReturn(new Date());
     ResourceNode file = IssuesReportFakeUtils.fakeFile("com.foo.Bar");
 
     IssuesReport report = IssuesReportFakeUtils.sampleReportWith2IssuesPerFile(file);

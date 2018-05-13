@@ -20,10 +20,10 @@
 package org.sonar.issuesreport.report;
 
 import com.google.common.collect.Maps;
-import org.sonar.api.issue.Issue;
+
+import org.sonar.api.batch.postjob.issue.PostJobIssue;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RulePriority;
-import org.sonar.issuesreport.tree.ResourceNode;
+import org.sonar.issuesreport.fs.ResourceNode;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -66,23 +66,23 @@ public class IssuesReport {
   }
 
   public List<ResourceReport> getResourceReports() {
-    return new ArrayList<ResourceReport>(resourceReportsByResource.values());
+    return new ArrayList<>(resourceReportsByResource.values());
   }
 
   public List<ResourceNode> getResourcesWithReport() {
-    return new ArrayList<ResourceNode>(resourceReportsByResource.keySet());
+    return new ArrayList<>(resourceReportsByResource.keySet());
   }
 
-  public void addIssueOnResource(ResourceNode resource, Issue issue, Rule rule, RulePriority severity) {
+  public void addIssueOnResource(ResourceNode resource, PostJobIssue issue, Rule rule) {
     addResource(resource);
-    getSummary().addIssue(issue, rule, severity);
-    resourceReportsByResource.get(resource).addIssue(issue, rule, RulePriority.valueOf(issue.severity()));
+    getSummary().addIssue(issue, rule);
+    resourceReportsByResource.get(resource).addIssue(issue, rule);
   }
 
-  public void addResolvedIssueOnResource(ResourceNode resource, Issue issue, Rule rule, RulePriority severity) {
+  public void addResolvedIssueOnResource(ResourceNode resource, PostJobIssue issue, Rule rule) {
     addResource(resource);
-    getSummary().addResolvedIssue(issue, rule, severity);
-    resourceReportsByResource.get(resource).addResolvedIssue(issue, rule, RulePriority.valueOf(issue.severity()));
+    getSummary().addResolvedIssue(issue, rule);
+    resourceReportsByResource.get(resource).addResolvedIssue(issue, rule);
   }
 
   private void addResource(ResourceNode resource) {

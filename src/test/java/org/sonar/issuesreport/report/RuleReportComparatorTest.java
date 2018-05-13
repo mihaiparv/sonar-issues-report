@@ -20,11 +20,10 @@
 package org.sonar.issuesreport.report;
 
 import org.junit.Test;
+import org.sonar.api.batch.rule.Severity;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RulePriority;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.fest.assertions.Assertions.assertThat;
@@ -33,25 +32,25 @@ public class RuleReportComparatorTest {
 
   @Test
   public void testOrderOfRuleReport() {
-    RuleReport oneNewMajorIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), RulePriority.MAJOR));
+    RuleReport oneNewMajorIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), Severity.MAJOR));
     oneNewMajorIssue.getTotal().incrementNewIssuesCount();
 
-    RuleReport oneNewBlockerIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), RulePriority.BLOCKER));
+    RuleReport oneNewBlockerIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), Severity.BLOCKER));
     oneNewBlockerIssue.getTotal().incrementNewIssuesCount();
 
-    RuleReport oneMajorIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), RulePriority.MAJOR));
+    RuleReport oneMajorIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), Severity.MAJOR));
     oneMajorIssue.getTotal().incrementCountInCurrentAnalysis();
 
-    RuleReport oneMajorIssueAnotherRule = new RuleReport(new ReportRuleKey(Rule.create("foo", "baq"), RulePriority.MAJOR));
+    RuleReport oneMajorIssueAnotherRule = new RuleReport(new ReportRuleKey(Rule.create("foo", "baq"), Severity.MAJOR));
     oneMajorIssueAnotherRule.getTotal().incrementCountInCurrentAnalysis();
 
-    RuleReport oneBlockerIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), RulePriority.BLOCKER));
+    RuleReport oneBlockerIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), Severity.BLOCKER));
     oneBlockerIssue.getTotal().incrementCountInCurrentAnalysis();
 
-    RuleReport oneNewMajorIssueAnotherRule = new RuleReport(new ReportRuleKey(Rule.create("foo", "baq"), RulePriority.MAJOR));
+    RuleReport oneNewMajorIssueAnotherRule = new RuleReport(new ReportRuleKey(Rule.create("foo", "baq"), Severity.MAJOR));
     oneNewMajorIssueAnotherRule.getTotal().incrementNewIssuesCount();
 
-    RuleReport twoNewMajorIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), RulePriority.MAJOR));
+    RuleReport twoNewMajorIssue = new RuleReport(new ReportRuleKey(Rule.create("foo", "bar"), Severity.MAJOR));
     twoNewMajorIssue.getTotal().incrementNewIssuesCount();
     twoNewMajorIssue.getTotal().incrementNewIssuesCount();
 
@@ -60,7 +59,7 @@ public class RuleReportComparatorTest {
       oneNewMajorIssueAnotherRule,
       twoNewMajorIssue
       );
-    Collections.sort(reports, new RuleReportComparator());
+    reports.sort(new RuleReportComparator());
 
     assertThat(reports).containsSequence(
       // First highest new issue priority

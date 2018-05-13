@@ -21,18 +21,19 @@ package org.sonar.issuesreport.report;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.sonar.api.issue.Issue;
-import org.sonar.api.issue.ProjectIssues;
-import org.sonar.api.resources.Project;
+import org.sonar.api.CoreProperties;
+import org.sonar.api.batch.postjob.PostJobContext;
+import org.sonar.api.batch.postjob.issue.PostJobIssue;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RuleFinder;
 import org.sonar.issuesreport.IssuesReportFakeUtils;
-import org.sonar.issuesreport.tree.ResourceNode;
-import org.sonar.issuesreport.tree.ResourceTree;
+import org.sonar.issuesreport.fs.InputFilesCollector;
+import org.sonar.issuesreport.fs.ResourceNode;
+import org.sonar.issuesreport.provider.RuleProvider;
 
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Optional;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.mockito.Matchers.eq;
@@ -41,58 +42,63 @@ import static org.mockito.Mockito.when;
 
 public class IssuesReportBuilderTest {
 
-  private ProjectIssues moduleIssues;
-  private RuleFinder ruleFinder;
+  private PostJobContext context;
+  private RuleProvider ruleFinder;
   private IssuesReportBuilder builder;
-  private ResourceTree resourceTree;
+  private InputFilesCollector inputFilesCollector;
 
   @Before
   public void prepare() {
-    moduleIssues = mock(ProjectIssues.class);
-    ruleFinder = mock(RuleFinder.class);
-    resourceTree = mock(ResourceTree.class);
-    builder = new IssuesReportBuilder(moduleIssues, ruleFinder, resourceTree);
+    Configuration config = mock(Configuration.class);
+    when(config.get(CoreProperties.PROJECT_NAME_PROPERTY)).thenReturn(Optional.of("Project Name"));
+
+    context = mock(PostJobContext.class);
+    when(context.config()).thenReturn(config);
+
+    ruleFinder = mock(RuleProvider.class);
+    inputFilesCollector = mock(InputFilesCollector.class);
+    builder = new IssuesReportBuilder(ruleFinder, inputFilesCollector);
   }
 
   @Test
   public void shouldNotFailWhenIssueOnUnknowResource() {
-    Issue fakeIssue = IssuesReportFakeUtils.fakeIssue(false, RuleKey.of("foo", "bar"), "com.foo.Bar", null);
-    when(moduleIssues.issues()).thenReturn(Arrays.asList(fakeIssue));
-    when(moduleIssues.resolvedIssues()).thenReturn(Collections.<Issue> emptyList());
+    PostJobIssue fakeIssue = IssuesReportFakeUtils.fakeIssue(false, RuleKey.of("foo", "bar"), "com.foo.Bar", null);
+    when(context.issues()).thenReturn(Collections.singletonList(fakeIssue));
+    when(context.resolvedIssues()).thenReturn(Collections.emptyList());
 
-    IssuesReport report = builder.buildReport(mock(Project.class));
+    IssuesReport report = builder.buildReport(context);
     assertThat(report.getResourceReports()).isEmpty();
   }
 
   @Test
   public void shouldNotFailWhenRuleNotFoundOnIssue() {
     ResourceNode fakeFile = IssuesReportFakeUtils.fakeFile("com.foo.Bar");
-    when(resourceTree.getResource("com.foo.Bar")).thenReturn(fakeFile);
+    when(inputFilesCollector.getResource("com.foo.Bar")).thenReturn(fakeFile);
 
-    Issue fakeIssue = IssuesReportFakeUtils.fakeIssue(false, RuleKey.of("foo", "bar"), "com.foo.Bar", null);
+    PostJobIssue fakeIssue = IssuesReportFakeUtils.fakeIssue(false, RuleKey.of("foo", "bar"), "com.foo.Bar", null);
 
-    when(moduleIssues.issues()).thenReturn(Arrays.asList(fakeIssue));
-    when(moduleIssues.resolvedIssues()).thenReturn(Collections.<Issue> emptyList());
+    when(context.issues()).thenReturn(Collections.singletonList(fakeIssue));
+    when(context.resolvedIssues()).thenReturn(Collections.emptyList());
 
-    IssuesReport report = builder.buildReport(mock(Project.class));
+    IssuesReport report = builder.buildReport(context);
     assertThat(report.getResourceReports()).isEmpty();
   }
 
   @Test
   public void shouldGenerateReportWithOneViolation() {
     ResourceNode fakeFile = IssuesReportFakeUtils.fakeFile("project:com.foo.Bar");
-    when(resourceTree.getResource("project:com.foo.Bar")).thenReturn(fakeFile);
+    when(inputFilesCollector.getResource("project:com.foo.Bar")).thenReturn(fakeFile);
 
     RuleKey ruleKey = RuleKey.of("foo", "bar");
-    Issue fakeIssue = IssuesReportFakeUtils.fakeIssue(false, ruleKey, "project:com.foo.Bar", 4);
+    PostJobIssue fakeIssue = IssuesReportFakeUtils.fakeIssue(false, ruleKey, "project:com.foo.Bar", 4);
 
-    when(moduleIssues.issues()).thenReturn(Arrays.asList(fakeIssue));
-    when(moduleIssues.resolvedIssues()).thenReturn(Collections.<Issue> emptyList());
+    when(context.issues()).thenReturn(Collections.singletonList(fakeIssue));
+    when(context.resolvedIssues()).thenReturn(Collections.emptyList());
 
     Rule fakeRule = IssuesReportFakeUtils.fakeRule(ruleKey);
-    when(ruleFinder.findByKey(eq(ruleKey))).thenReturn(fakeRule);
+    when(ruleFinder.getRule(eq(ruleKey))).thenReturn(fakeRule);
 
-    IssuesReport report = builder.buildReport(mock(Project.class));
+    IssuesReport report = builder.buildReport(context);
     assertThat(report.getSummary().getTotal().getCountInCurrentAnalysis()).isEqualTo(1);
     assertThat(report.getSummary().getTotal().getNewIssuesCount()).isEqualTo(0);
     assertThat(report.getSummary().getTotal().getResolvedIssuesCount()).isEqualTo(0);
@@ -120,18 +126,18 @@ public class IssuesReportBuilderTest {
   @Test
   public void shouldGenerateReportWithOneNewViolation() {
     ResourceNode fakeFile = IssuesReportFakeUtils.fakeFile("project:com.foo.Bar");
-    when(resourceTree.getResource("project:com.foo.Bar")).thenReturn(fakeFile);
+    when(inputFilesCollector.getResource("project:com.foo.Bar")).thenReturn(fakeFile);
 
     RuleKey ruleKey = RuleKey.of("foo", "bar");
-    Issue fakeIssue = IssuesReportFakeUtils.fakeIssue(true, ruleKey, "project:com.foo.Bar", 4);
+    PostJobIssue fakeIssue = IssuesReportFakeUtils.fakeIssue(true, ruleKey, "project:com.foo.Bar", 4);
 
-    when(moduleIssues.issues()).thenReturn(Arrays.asList(fakeIssue));
-    when(moduleIssues.resolvedIssues()).thenReturn(Collections.<Issue> emptyList());
+    when(context.issues()).thenReturn(Collections.singletonList(fakeIssue));
+    when(context.resolvedIssues()).thenReturn(Collections.emptyList());
 
     Rule fakeRule = IssuesReportFakeUtils.fakeRule(ruleKey);
-    when(ruleFinder.findByKey(eq(ruleKey))).thenReturn(fakeRule);
+    when(ruleFinder.getRule(eq(ruleKey))).thenReturn(fakeRule);
 
-    IssuesReport report = builder.buildReport(mock(Project.class));
+    IssuesReport report = builder.buildReport(context);
     assertThat(report.getSummary().getTotal().getCountInCurrentAnalysis()).isEqualTo(1);
     assertThat(report.getSummary().getTotal().getNewIssuesCount()).isEqualTo(1);
     assertThat(report.getSummary().getTotal().getResolvedIssuesCount()).isEqualTo(0);
@@ -156,19 +162,19 @@ public class IssuesReportBuilderTest {
   @Test
   public void shouldGenerateReportWithOneNewViolationAndOneResolved() {
     ResourceNode fakeFile = IssuesReportFakeUtils.fakeFile("project:com.foo.Bar");
-    when(resourceTree.getResource("project:com.foo.Bar")).thenReturn(fakeFile);
+    when(inputFilesCollector.getResource("project:com.foo.Bar")).thenReturn(fakeFile);
 
     RuleKey ruleKey = RuleKey.of("foo", "bar");
-    Issue fakeNewIssue = IssuesReportFakeUtils.fakeIssue(true, ruleKey, "project:com.foo.Bar", null);
-    Issue fakeResolvedIssue = IssuesReportFakeUtils.fakeIssue(false, ruleKey, "project:com.foo.Bar", null);
+    PostJobIssue fakeNewIssue = IssuesReportFakeUtils.fakeIssue(true, ruleKey, "project:com.foo.Bar", null);
+    PostJobIssue fakeResolvedIssue = IssuesReportFakeUtils.fakeIssue(false, ruleKey, "project:com.foo.Bar", null);
 
-    when(moduleIssues.issues()).thenReturn(Arrays.asList(fakeNewIssue));
-    when(moduleIssues.resolvedIssues()).thenReturn(Arrays.asList(fakeResolvedIssue));
+    when(context.issues()).thenReturn(Collections.singletonList(fakeNewIssue));
+    when(context.resolvedIssues()).thenReturn(Collections.singletonList(fakeResolvedIssue));
 
     Rule fakeRule = IssuesReportFakeUtils.fakeRule(ruleKey);
-    when(ruleFinder.findByKey(eq(ruleKey))).thenReturn(fakeRule);
+    when(ruleFinder.getRule(eq(ruleKey))).thenReturn(fakeRule);
 
-    IssuesReport report = builder.buildReport(mock(Project.class));
+    IssuesReport report = builder.buildReport(context);
     assertThat(report.getSummary().getTotal().getCountInCurrentAnalysis()).isEqualTo(1);
     assertThat(report.getSummary().getTotal().getNewIssuesCount()).isEqualTo(1);
     assertThat(report.getSummary().getTotal().getResolvedIssuesCount()).isEqualTo(1);

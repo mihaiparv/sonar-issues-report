@@ -372,9 +372,12 @@
                   <#if issue.isNew()>
                     NEW
                     <#else>
-                    ${issue.creationDate()?date}
+                    EXISTING
                   </#if>
                 </span>
+                &nbsp;
+                <img src="issuesreport_files/sep12.png">&nbsp;
+                <span class="rule_key">${issue.ruleKey()}</span>
               </div>
               <div class="discussionComment">
               ${ruleNameProvider.nameForHTML(issue.ruleKey())}
@@ -421,11 +424,12 @@
                               <#if issue.isNew()>
                                 NEW
                                 <#else>
-                                ${issue.creationDate()?date}
+                                EXISTING
                               </#if>
                             </span>
                             &nbsp;
-
+                            <img src="issuesreport_files/sep12.png">&nbsp;
+                            <span class="rule_key">${issue.ruleKey()}</span>WebService
                           </div>
                           <div class="discussionComment">
                             ${ruleNameProvider.nameForHTML(issue.ruleKey())}

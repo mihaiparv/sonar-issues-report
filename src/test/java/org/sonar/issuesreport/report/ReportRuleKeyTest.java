@@ -20,7 +20,7 @@
 package org.sonar.issuesreport.report;
 
 import org.junit.Test;
-import org.sonar.api.rules.RulePriority;
+import org.sonar.api.batch.rule.Severity;
 
 import static org.fest.assertions.Assertions.assertThat;
 
@@ -28,31 +28,31 @@ public class ReportRuleKeyTest {
 
   @Test
   public void testEquals() {
-    ReportRuleKey reportRuleKey = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), RulePriority.BLOCKER);
+    ReportRuleKey reportRuleKey = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), Severity.BLOCKER);
     assertThat(reportRuleKey).isNotEqualTo("another object");
     assertThat(reportRuleKey).isEqualTo(reportRuleKey);
-    assertThat(reportRuleKey).isEqualTo(new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), RulePriority.BLOCKER));
-    assertThat(reportRuleKey).isNotEqualTo(new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), RulePriority.MAJOR));
-    assertThat(reportRuleKey).isNotEqualTo(new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar2"), RulePriority.BLOCKER));
+    assertThat(reportRuleKey).isEqualTo(new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), Severity.BLOCKER));
+    assertThat(reportRuleKey).isNotEqualTo(new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), Severity.MAJOR));
+    assertThat(reportRuleKey).isNotEqualTo(new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar2"), Severity.BLOCKER));
   }
 
   @Test
   public void testCompare() {
-    ReportRuleKey reportRuleKey = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), RulePriority.MAJOR);
+    ReportRuleKey reportRuleKey = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), Severity.MAJOR);
 
-    ReportRuleKey other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), RulePriority.MAJOR);
+    ReportRuleKey other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), Severity.MAJOR);
     assertThat(reportRuleKey.compareTo(other)).isEqualTo(0);
 
-    other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), RulePriority.MINOR);
+    other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), Severity.MINOR);
     assertThat(reportRuleKey.compareTo(other)).isLessThan(0);
 
-    other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), RulePriority.BLOCKER);
+    other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bar"), Severity.BLOCKER);
     assertThat(reportRuleKey.compareTo(other)).isGreaterThan(0);
 
-    other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "baq"), RulePriority.MAJOR);
+    other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "baq"), Severity.MAJOR);
     assertThat(reportRuleKey.compareTo(other)).isGreaterThan(0);
 
-    other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bas"), RulePriority.MAJOR);
+    other = new ReportRuleKey(org.sonar.api.rules.Rule.create("foo", "bas"), Severity.MAJOR);
     assertThat(reportRuleKey.compareTo(other)).isLessThan(0);
   }
 

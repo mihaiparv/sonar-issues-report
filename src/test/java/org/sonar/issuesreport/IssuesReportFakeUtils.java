@@ -19,12 +19,12 @@
  */
 package org.sonar.issuesreport;
 
-import org.sonar.api.issue.Issue;
+import org.sonar.api.batch.postjob.issue.PostJobIssue;
+import org.sonar.api.batch.rule.Severity;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RulePriority;
+import org.sonar.issuesreport.fs.ResourceNode;
 import org.sonar.issuesreport.report.IssuesReport;
-import org.sonar.issuesreport.tree.ResourceNode;
 
 import java.util.Date;
 import java.util.UUID;
@@ -41,25 +41,24 @@ public class IssuesReportFakeUtils {
 
     for (ResourceNode file : files) {
       Rule rule1 = fakeRule(RuleKey.of("foo", "bar"));
-      Issue issue1 = fakeIssue(true, RuleKey.of("foo", "bar"), file.getKey(), null);
+      PostJobIssue issue1 = fakeIssue(true, RuleKey.of("foo", "bar"), file.getKey(), null);
       Rule rule2 = fakeRule(RuleKey.of("foo", "bar2"));
-      Issue issue2 = fakeIssue(false, RuleKey.of("foo", "bar2"), file.getKey(), 6);
+      PostJobIssue issue2 = fakeIssue(false, RuleKey.of("foo", "bar2"), file.getKey(), 6);
 
-      report.addIssueOnResource(file, issue1, rule1, RulePriority.BLOCKER);
-      report.addIssueOnResource(file, issue2, rule2, RulePriority.BLOCKER);
+      report.addIssueOnResource(file, issue1, rule1);
+      report.addIssueOnResource(file, issue2, rule2);
     }
 
     return report;
   }
 
-  public static Issue fakeIssue(boolean isNew, RuleKey ruleKey, String componentKey, Integer line) {
-    Issue issue = mock(Issue.class);
+  public static PostJobIssue fakeIssue(boolean isNew, RuleKey ruleKey, String componentKey, Integer line) {
+    PostJobIssue issue = mock(PostJobIssue.class);
     when(issue.key()).thenReturn(UUID.randomUUID().toString());
     when(issue.isNew()).thenReturn(isNew);
     when(issue.line()).thenReturn(line);
     when(issue.ruleKey()).thenReturn(ruleKey);
-    when(issue.severity()).thenReturn("BLOCKER");
-    when(issue.creationDate()).thenReturn(new Date());
+    when(issue.severity()).thenReturn(Severity.BLOCKER);
     when(issue.componentKey()).thenReturn(componentKey);
     return issue;
   }

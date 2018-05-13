@@ -20,21 +20,20 @@
 package org.sonar.issuesreport.printer.html;
 
 import com.google.common.base.Charsets;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.sonar.api.config.PropertyDefinitions;
-import org.sonar.api.config.Settings;
-import org.sonar.api.resources.Project;
+import org.sonar.api.batch.fs.FileSystem;
+import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.rule.RuleKey;
-import org.sonar.api.scan.filesystem.ModuleFileSystem;
 import org.sonar.issuesreport.IssuesReportFakeUtils;
 import org.sonar.issuesreport.IssuesReportPlugin;
+import org.sonar.issuesreport.fs.ResourceNode;
 import org.sonar.issuesreport.provider.RuleNameProvider;
 import org.sonar.issuesreport.provider.SourceProvider;
 import org.sonar.issuesreport.report.IssuesReport;
-import org.sonar.issuesreport.tree.ResourceNode;
 
 import java.io.File;
 import java.io.IOException;
@@ -54,30 +53,19 @@ public class HTMLPrinterTest {
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
-  private Settings settings;
+  private MapSettings settings;
   private HtmlPrinter htmlPrinter;
   private RuleNameProvider ruleNameProvider;
-  private SourceProvider sourceProvider;
-  private ModuleFileSystem fs;
+  private FileSystem fs;
 
   @Before
   public void prepare() {
     ruleNameProvider = mock(RuleNameProvider.class);
-    sourceProvider = mock(SourceProvider.class);
-    fs = mock(ModuleFileSystem.class);
-    settings = new Settings(new PropertyDefinitions(IssuesReportPlugin.class));
-    htmlPrinter = new HtmlPrinter(ruleNameProvider, sourceProvider, fs, settings);
-  }
+    SourceProvider sourceProvider = mock(SourceProvider.class);
+    fs = mock(FileSystem.class);
+    settings = new MapSettings();
 
-  @Test
-  public void shouldBeDisabledByDefault() {
-    assertThat(htmlPrinter.isEnabled()).isFalse();
-  }
-
-  @Test
-  public void shouldEnableHTMLReport() {
-    settings.setProperty(IssuesReportPlugin.HTML_REPORT_ENABLED_KEY, "true");
-    assertThat(htmlPrinter.isEnabled()).isTrue();
+    htmlPrinter = new HtmlPrinter(ruleNameProvider, sourceProvider, fs, settings.asConfig());
   }
 
   @Test
@@ -88,9 +76,7 @@ public class HTMLPrinterTest {
 
   @Test
   public void shouldGenerateEmptyReport() throws IOException {
-    when(fs.sourceCharset()).thenReturn(Charsets.UTF_8);
-    Project project = mock(Project.class);
-    when(project.getAnalysisDate()).thenReturn(new Date());
+    when(fs.encoding()).thenReturn(Charsets.UTF_8);
     IssuesReport report = new IssuesReport();
     report.setTitle("Fake report");
     report.setDate(new Date());
@@ -102,7 +88,9 @@ public class HTMLPrinterTest {
 
   @Test
   public void shouldPrintIntoDefaultReportFile() {
-    when(fs.workingDir()).thenReturn(new File("target"));
+    settings.setProperty(IssuesReportPlugin.HTML_REPORT_NAME_KEY, IssuesReportPlugin.HTML_REPORT_NAME_DEFAULT);
+    settings.setProperty(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY, IssuesReportPlugin.HTML_REPORT_LOCATION_DEFAULT);
+    when(fs.workDir()).thenReturn(new File("target"));
     HtmlPrinter spy = spy(htmlPrinter);
     doNothing().when(spy).writeToFile(any(IssuesReport.class), any(File.class), anyBoolean());
 
@@ -116,6 +104,7 @@ public class HTMLPrinterTest {
   public void shouldConfigureReportLocation() throws IOException {
     File reportPath = new File("target/path/to/report");
     settings.setProperty(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY, reportPath.getAbsolutePath());
+    settings.setProperty(IssuesReportPlugin.HTML_REPORT_NAME_KEY, IssuesReportPlugin.HTML_REPORT_NAME_DEFAULT);
 
     HtmlPrinter spy = spy(htmlPrinter);
     doNothing().when(spy).writeToFile(any(IssuesReport.class), any(File.class), anyBoolean());
@@ -130,6 +119,7 @@ public class HTMLPrinterTest {
   public void shouldConfigureReportLocation_deprecated() throws IOException {
     File reportPath = new File("target/path/to/report.html");
     settings.setProperty(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY, reportPath.getAbsolutePath());
+    settings.setProperty(IssuesReportPlugin.HTML_REPORT_NAME_KEY, IssuesReportPlugin.HTML_REPORT_NAME_DEFAULT);
 
     HtmlPrinter spy = spy(htmlPrinter);
     doNothing().when(spy).writeToFile(any(IssuesReport.class), any(File.class), anyBoolean());
@@ -146,11 +136,10 @@ public class HTMLPrinterTest {
     File reportFile = new File(reportDir, "issues-report.html");
     File lightReportFile = new File(reportDir, "issues-report-light.html");
     settings.setProperty(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY, reportDir.getAbsolutePath());
+    settings.setProperty(IssuesReportPlugin.HTML_REPORT_NAME_KEY, IssuesReportPlugin.HTML_REPORT_NAME_DEFAULT);
 
-    when(fs.sourceCharset()).thenReturn(Charsets.UTF_8);
+    when(fs.encoding()).thenReturn(Charsets.UTF_8);
 
-    Project project = mock(Project.class);
-    when(project.getAnalysisDate()).thenReturn(new Date());
     ResourceNode file = IssuesReportFakeUtils.fakeFile("com.foo.Bar");
     mockRuleNameProvider();
 
@@ -168,12 +157,11 @@ public class HTMLPrinterTest {
     File reportFile = new File(reportDir, "issues-report.html");
     File lightReportFile = new File(reportDir, "issues-report-light.html");
     settings.setProperty(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY, reportDir.getAbsolutePath());
+    settings.setProperty(IssuesReportPlugin.HTML_REPORT_NAME_KEY, IssuesReportPlugin.HTML_REPORT_NAME_DEFAULT);
     settings.setProperty(IssuesReportPlugin.HTML_REPORT_LIGHTMODE_ONLY, true);
 
-    when(fs.sourceCharset()).thenReturn(Charsets.UTF_8);
+    when(fs.encoding()).thenReturn(Charsets.UTF_8);
 
-    Project project = mock(Project.class);
-    when(project.getAnalysisDate()).thenReturn(new Date());
     ResourceNode file = IssuesReportFakeUtils.fakeFile("com.foo.Bar");
     mockRuleNameProvider();
 
@@ -199,11 +187,10 @@ public class HTMLPrinterTest {
     File reportFile = new File(reportDir, "issues-report.html");
     File lightReportFile = new File(reportDir, "issues-report-light.html");
     settings.setProperty(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY, reportDir.getAbsolutePath());
+    settings.setProperty(IssuesReportPlugin.HTML_REPORT_NAME_KEY, IssuesReportPlugin.HTML_REPORT_NAME_DEFAULT);
 
-    when(fs.sourceCharset()).thenReturn(Charsets.UTF_8);
+    when(fs.encoding()).thenReturn(Charsets.UTF_8);
 
-    Project project = mock(Project.class);
-    when(project.getAnalysisDate()).thenReturn(new Date());
     ResourceNode file1 = IssuesReportFakeUtils.fakeFile("com.foo.Bar");
     ResourceNode file2 = IssuesReportFakeUtils.fakeFile("com.foo.Foo");
     mockRuleNameProvider();
@@ -222,11 +209,10 @@ public class HTMLPrinterTest {
     File reportFile = new File(reportDir, "issues-report.html");
     File lightReportFile = new File(reportDir, "issues-report-light.html");
     settings.setProperty(IssuesReportPlugin.HTML_REPORT_LOCATION_KEY, reportDir.getAbsolutePath());
+    settings.setProperty(IssuesReportPlugin.HTML_REPORT_NAME_KEY, IssuesReportPlugin.HTML_REPORT_NAME_DEFAULT);
 
-    when(fs.sourceCharset()).thenReturn(Charsets.UTF_8);
+    when(fs.encoding()).thenReturn(Charsets.UTF_8);
 
-    Project project = mock(Project.class);
-    when(project.getAnalysisDate()).thenReturn(new Date());
     ResourceNode pac = IssuesReportFakeUtils.fakePackage("com.foo");
     mockRuleNameProvider();
 

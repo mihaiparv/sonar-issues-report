@@ -20,23 +20,23 @@
 package org.sonar.issuesreport.provider;
 
 import org.apache.commons.lang.StringEscapeUtils;
+import org.sonar.api.batch.ScannerSide;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RuleFinder;
-import org.sonar.api.task.TaskExtension;
 
 import javax.annotation.CheckForNull;
 
-public class RuleNameProvider implements TaskExtension {
-  private RuleFinder ruleFinder;
+@ScannerSide
+public class RuleNameProvider {
+  private RuleProvider ruleProvider;
 
-  public RuleNameProvider(RuleFinder ruleFinder) {
-    this.ruleFinder = ruleFinder;
+  public RuleNameProvider(RuleProvider ruleProvider) {
+    this.ruleProvider = ruleProvider;
   }
 
   @CheckForNull
   private String nameFromDB(RuleKey ruleKey) {
-    Rule r = ruleFinder.findByKey(ruleKey);
+    Rule r = ruleProvider.getRule(ruleKey);
     return r != null ? r.getName() : null;
   }
 
@@ -47,7 +47,7 @@ public class RuleNameProvider implements TaskExtension {
 
   public String nameForJS(String ruleKey) {
     String name = nameFromDB(RuleKey.parse(ruleKey));
-    return StringEscapeUtils.escapeJavaScript(name != null ? name : ruleKey.toString());
+    return StringEscapeUtils.escapeJavaScript(name != null ? name : ruleKey);
   }
 
   public String nameForHTML(Rule rule) {

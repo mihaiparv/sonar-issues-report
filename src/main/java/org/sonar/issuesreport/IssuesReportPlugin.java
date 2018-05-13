@@ -19,19 +19,17 @@
  */
 package org.sonar.issuesreport;
 
-import com.google.common.collect.ImmutableList;
+import org.sonar.api.Plugin;
 import org.sonar.api.Properties;
 import org.sonar.api.Property;
 import org.sonar.api.PropertyType;
-import org.sonar.api.SonarPlugin;
 import org.sonar.issuesreport.printer.console.ConsolePrinter;
 import org.sonar.issuesreport.printer.html.HtmlPrinter;
 import org.sonar.issuesreport.provider.RuleNameProvider;
+import org.sonar.issuesreport.provider.RuleProvider;
 import org.sonar.issuesreport.provider.SourceProvider;
 import org.sonar.issuesreport.report.IssuesReportBuilder;
-import org.sonar.issuesreport.tree.ResourceTree;
-
-import java.util.List;
+import org.sonar.issuesreport.fs.InputFilesCollector;
 
 @Properties({
   @Property(key = IssuesReportPlugin.HTML_REPORT_ENABLED_KEY, name = "Enable HTML report", description = "Set this to true to generate an HTML report",
@@ -47,7 +45,7 @@ import java.util.List;
   @Property(key = IssuesReportPlugin.HTML_REPORT_LIGHTMODE_ONLY, name = "Html report in light mode only", project = true,
     description = "Set this to true to only generate the new issues report (light report)",
     type = PropertyType.BOOLEAN, defaultValue = "false")})
-public final class IssuesReportPlugin extends SonarPlugin {
+public final class IssuesReportPlugin implements Plugin {
 
   public static final String HTML_REPORT_ENABLED_KEY = "sonar.issuesReport.html.enable";
   public static final String HTML_REPORT_LOCATION_KEY = "sonar.issuesReport.html.location";
@@ -58,14 +56,15 @@ public final class IssuesReportPlugin extends SonarPlugin {
 
   public static final String CONSOLE_REPORT_ENABLED_KEY = "sonar.issuesReport.console.enable";
 
-  public List getExtensions() {
-    return ImmutableList.of(
-      ReportJob.class,
-      IssuesReportBuilder.class,
-      RuleNameProvider.class,
-      SourceProvider.class,
-      ResourceTree.class,
-      HtmlPrinter.class,
-      ConsolePrinter.class);
+  public void define(Context context) {
+    context.addExtensions(
+        ReportJob.class,
+        IssuesReportBuilder.class,
+        RuleProvider.class,
+        RuleNameProvider.class,
+        SourceProvider.class,
+        InputFilesCollector.class,
+        HtmlPrinter.class,
+        ConsolePrinter.class);
   }
 }

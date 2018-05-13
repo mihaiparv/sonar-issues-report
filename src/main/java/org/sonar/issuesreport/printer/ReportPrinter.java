@@ -19,12 +19,13 @@
  */
 package org.sonar.issuesreport.printer;
 
-import org.sonar.api.BatchExtension;
+import org.sonar.api.batch.ScannerSide;
 import org.sonar.issuesreport.report.IssuesReport;
 
-public interface ReportPrinter extends BatchExtension {
+@ScannerSide
+public interface ReportPrinter {
 
-  boolean isEnabled();
+  String getRequiredProperty();
 
   void print(IssuesReport report);
 

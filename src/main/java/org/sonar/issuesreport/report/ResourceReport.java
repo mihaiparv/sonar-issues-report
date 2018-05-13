@@ -20,11 +20,12 @@
 package org.sonar.issuesreport.report;
 
 import com.google.common.collect.Maps;
+
 import org.apache.commons.collections.CollectionUtils;
-import org.sonar.api.issue.Issue;
+import org.sonar.api.batch.postjob.issue.PostJobIssue;
+import org.sonar.api.batch.rule.Severity;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RulePriority;
-import org.sonar.issuesreport.tree.ResourceNode;
+import org.sonar.issuesreport.fs.ResourceNode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,11 +38,11 @@ public final class ResourceReport {
   private final IssueVariation total = new IssueVariation();
   private final Map<ReportRuleKey, RuleReport> ruleReportByRuleKey = Maps.newHashMap();
 
-  private List<Issue> issues = new ArrayList<Issue>();
-  private Map<Integer, List<Issue>> issuesPerLine = Maps.newHashMap();
-  private Map<Integer, List<Issue>> newIssuesPerLine = Maps.newHashMap();
+  private List<PostJobIssue> issues = new ArrayList<>();
+  private Map<Integer, List<PostJobIssue>> issuesPerLine = Maps.newHashMap();
+  private Map<Integer, List<PostJobIssue>> newIssuesPerLine = Maps.newHashMap();
   private Map<Rule, AtomicInteger> issuesByRule = Maps.newHashMap();
-  private Map<RulePriority, AtomicInteger> issuesBySeverity = Maps.newHashMap();
+  private Map<Severity, AtomicInteger> issuesBySeverity = Maps.newHashMap();
 
   public ResourceReport(ResourceNode resource) {
     this.resource = resource;
@@ -63,15 +64,15 @@ public final class ResourceReport {
     return total;
   }
 
-  public List<Issue> getIssues() {
+  public List<PostJobIssue> getIssues() {
     return issues;
   }
 
-  public Map<Integer, List<Issue>> getIssuesPerLine() {
+  public Map<Integer, List<PostJobIssue>> getIssuesPerLine() {
     return issuesPerLine;
   }
 
-  public List<Issue> getIssuesAtLine(int lineId, boolean all) {
+  public List<PostJobIssue> getIssuesAtLine(int lineId, boolean all) {
     if (all) {
       if (issuesPerLine.containsKey(lineId)) {
         return issuesPerLine.get(lineId);
@@ -82,14 +83,15 @@ public final class ResourceReport {
     return Collections.emptyList();
   }
 
-  public void addIssue(Issue issue, Rule rule, RulePriority severity) {
+  public void addIssue(PostJobIssue issue, Rule rule) {
+    Severity severity = issue.severity();
     ReportRuleKey reportRuleKey = new ReportRuleKey(rule, severity);
     initMaps(reportRuleKey);
     issues.add(issue);
     Integer line = issue.line();
     line = line != null ? line : 0;
     if (!issuesPerLine.containsKey(line)) {
-      issuesPerLine.put(line, new ArrayList<Issue>());
+      issuesPerLine.put(line, new ArrayList<>());
     }
     issuesPerLine.get(line).add(issue);
     if (!issuesByRule.containsKey(rule)) {
@@ -104,7 +106,7 @@ public final class ResourceReport {
     total.incrementCountInCurrentAnalysis();
     if (issue.isNew()) {
       if (!newIssuesPerLine.containsKey(line)) {
-        newIssuesPerLine.put(line, new ArrayList<Issue>());
+        newIssuesPerLine.put(line, new ArrayList<>());
       }
       newIssuesPerLine.get(line).add(issue);
       total.incrementNewIssuesCount();
@@ -112,8 +114,8 @@ public final class ResourceReport {
     }
   }
 
-  public void addResolvedIssue(Issue issue, Rule rule, RulePriority severity) {
-    ReportRuleKey reportRuleKey = new ReportRuleKey(rule, severity);
+  public void addResolvedIssue(PostJobIssue issue, Rule rule) {
+    ReportRuleKey reportRuleKey = new ReportRuleKey(rule, issue.severity());
     initMaps(reportRuleKey);
     total.incrementResolvedIssuesCount();
     ruleReportByRuleKey.get(reportRuleKey).getTotal().incrementResolvedIssuesCount();
@@ -145,8 +147,8 @@ public final class ResourceReport {
   }
 
   public List<RuleReport> getRuleReports() {
-    List<RuleReport> result = new ArrayList<RuleReport>(ruleReportByRuleKey.values());
-    Collections.sort(result, new RuleReportComparator());
+    List<RuleReport> result = new ArrayList<>(ruleReportByRuleKey.values());
+    result.sort(new RuleReportComparator());
     return result;
   }
 

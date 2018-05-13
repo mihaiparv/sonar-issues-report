@@ -24,7 +24,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.sonar.issuesreport.tree.ResourceNode;
+import org.sonar.issuesreport.fs.ResourceNode;
 
 import java.io.File;
 

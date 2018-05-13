@@ -20,11 +20,11 @@
 package org.sonar.issuesreport.printer.console;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sonar.api.config.Settings;
-import org.sonar.api.rules.RulePriority;
+import org.sonar.api.batch.rule.Severity;
 import org.sonar.issuesreport.IssuesReportPlugin;
 import org.sonar.issuesreport.printer.ReportPrinter;
 import org.sonar.issuesreport.report.IssueVariation;
@@ -41,22 +41,20 @@ public class ConsolePrinter implements ReportPrinter {
     }
   }
 
-  private Settings settings;
   private ConsoleLogger logger;
 
-  public ConsolePrinter(Settings settings) {
-    this(settings, new ConsoleLogger());
+  public ConsolePrinter() {
+    this(new ConsoleLogger());
   }
 
   @VisibleForTesting
-  public ConsolePrinter(Settings settings, ConsoleLogger logger) {
-    this.settings = settings;
+  public ConsolePrinter(ConsoleLogger logger) {
     this.logger = logger;
   }
 
   @Override
-  public boolean isEnabled() {
-    return settings.getBoolean(IssuesReportPlugin.CONSOLE_REPORT_ENABLED_KEY);
+  public String getRequiredProperty() {
+    return IssuesReportPlugin.CONSOLE_REPORT_ENABLED_KEY;
   }
 
   @Override
@@ -66,12 +64,14 @@ public class ConsolePrinter implements ReportPrinter {
     int newIssues = report.getSummary().getTotal().getNewIssuesCount();
     sb.append("\n\n-------------  Issues Report  -------------\n\n");
     if (newIssues > 0) {
-      sb.append(StringUtils.leftPad("+" + newIssues, LEFT_PAD)).append(" issue" + (newIssues > 1 ? "s" : "")).append("\n\n");
-      printNewIssues(sb, report, RulePriority.BLOCKER, "blocking");
-      printNewIssues(sb, report, RulePriority.CRITICAL, "critical");
-      printNewIssues(sb, report, RulePriority.MAJOR, "major");
-      printNewIssues(sb, report, RulePriority.MINOR, "minor");
-      printNewIssues(sb, report, RulePriority.INFO, "info");
+      sb.append(StringUtils.leftPad("+" + newIssues, LEFT_PAD))
+          .append(" issue").append(newIssues > 1 ? "s" : "")
+          .append("\n\n");
+      printNewIssues(sb, report, Severity.BLOCKER, "blocking");
+      printNewIssues(sb, report, Severity.CRITICAL, "critical");
+      printNewIssues(sb, report, Severity.MAJOR, "major");
+      printNewIssues(sb, report, Severity.MINOR, "minor");
+      printNewIssues(sb, report, Severity.INFO, "info");
     } else {
       sb.append("  No new issue").append("\n");
     }
@@ -80,7 +80,7 @@ public class ConsolePrinter implements ReportPrinter {
     logger.log(sb.toString());
   }
 
-  private void printNewIssues(StringBuilder sb, IssuesReport report, RulePriority severity, String severityLabel) {
+  private void printNewIssues(StringBuilder sb, IssuesReport report, Severity severity, String severityLabel) {
     IssueVariation issueVariation = report.getSummary().getTotalBySeverity().get(severity.toString());
     if (issueVariation != null) {
       int issueCount = issueVariation.getNewIssuesCount();

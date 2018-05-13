@@ -19,14 +19,23 @@
  */
 package org.sonar.issuesreport;
 
-import org.sonar.issuesreport.IssuesReportPlugin;
-
 import org.junit.Test;
+import org.sonar.api.Plugin;
+import org.sonar.api.SonarQubeSide;
+import org.sonar.api.SonarRuntime;
+import org.sonar.api.internal.SonarRuntimeImpl;
+import org.sonar.api.utils.Version;
+
 import static org.fest.assertions.Assertions.assertThat;
 
 public class IssuesReportPluginTest {
   @Test
-  public void getExtensions() {
-    assertThat(new IssuesReportPlugin().getExtensions()).isNotEmpty();
+  public void test_plugin_extensions_compatible_with_6_7() {
+    SonarRuntime runtime = SonarRuntimeImpl.forSonarQube(Version.create(6, 7), SonarQubeSide.SCANNER);
+    Plugin.Context context = new Plugin.Context(runtime);
+
+    new IssuesReportPlugin().define(context);
+
+    assertThat(context.getExtensions()).hasSize(8);
   }
 }

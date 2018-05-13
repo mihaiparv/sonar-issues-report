@@ -20,12 +20,11 @@
 package org.sonar.issuesreport.report;
 
 import com.google.common.collect.Maps;
-import org.sonar.api.issue.Issue;
+
+import org.sonar.api.batch.postjob.issue.PostJobIssue;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RulePriority;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -44,18 +43,18 @@ public class ReportSummary {
     return total;
   }
 
-  public void addIssue(Issue issue, Rule rule, RulePriority severity) {
-    ReportRuleKey reportRuleKey = new ReportRuleKey(rule, severity);
+  public void addIssue(PostJobIssue issue, Rule rule) {
+    ReportRuleKey reportRuleKey = new ReportRuleKey(rule, issue.severity());
     initMaps(reportRuleKey);
     ruleReportByRuleKey.get(reportRuleKey).getTotal().incrementCountInCurrentAnalysis();
     total.incrementCountInCurrentAnalysis();
     totalByRuleKey.get(rule.ruleKey().toString()).incrementCountInCurrentAnalysis();
-    totalBySeverity.get(severity.toString()).incrementCountInCurrentAnalysis();
+    totalBySeverity.get(issue.severity().toString()).incrementCountInCurrentAnalysis();
     if (issue.isNew()) {
       total.incrementNewIssuesCount();
       ruleReportByRuleKey.get(reportRuleKey).getTotal().incrementNewIssuesCount();
       totalByRuleKey.get(rule.ruleKey().toString()).incrementNewIssuesCount();
-      totalBySeverity.get(severity.toString()).incrementNewIssuesCount();
+      totalBySeverity.get(issue.severity().toString()).incrementNewIssuesCount();
     }
   }
 
@@ -67,13 +66,13 @@ public class ReportSummary {
     return totalByRuleKey;
   }
 
-  public void addResolvedIssue(Issue issue, Rule rule, RulePriority severity) {
-    ReportRuleKey reportRuleKey = new ReportRuleKey(rule, severity);
+  public void addResolvedIssue(PostJobIssue issue, Rule rule) {
+    ReportRuleKey reportRuleKey = new ReportRuleKey(rule, issue.severity());
     initMaps(reportRuleKey);
     total.incrementResolvedIssuesCount();
     ruleReportByRuleKey.get(reportRuleKey).getTotal().incrementResolvedIssuesCount();
     totalByRuleKey.get(rule.ruleKey().toString()).incrementResolvedIssuesCount();
-    totalBySeverity.get(severity.toString()).incrementResolvedIssuesCount();
+    totalBySeverity.get(issue.severity().toString()).incrementResolvedIssuesCount();
   }
 
   private void initMaps(ReportRuleKey reportRuleKey) {
@@ -89,8 +88,8 @@ public class ReportSummary {
   }
 
   public List<RuleReport> getRuleReports() {
-    List<RuleReport> result = new ArrayList<RuleReport>(ruleReportByRuleKey.values());
-    Collections.sort(result, new RuleReportComparator());
+    List<RuleReport> result = new ArrayList<>(ruleReportByRuleKey.values());
+    result.sort(new RuleReportComparator());
     return result;
   }
 }

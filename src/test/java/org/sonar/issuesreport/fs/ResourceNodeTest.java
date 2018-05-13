@@ -17,31 +17,37 @@
  * License along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02
  */
-package org.sonar.issuesreport.tree;
+package org.sonar.issuesreport.fs;
 
-import com.google.common.base.Charsets;
+import org.junit.Rule;
 import org.junit.Test;
-import org.sonar.api.resources.Project;
+import org.junit.rules.TemporaryFolder;
+import org.sonar.api.batch.fs.internal.TestInputFileBuilder;
 
 import static org.fest.assertions.Assertions.assertThat;
 
 public class ResourceNodeTest {
 
+  @Rule
+  public TemporaryFolder temp = new TemporaryFolder();
+
+
   @Test
   public void test_equals() {
-    ResourceNode r = new ResourceNode(new Project("myProject"), null, Charsets.UTF_8);
+    ResourceNode r = new ResourceNode(new TestInputFileBuilder("a","b.c")
+                                          .setModuleBaseDir(temp.getRoot().toPath()).build());
     assertThat(r).isEqualTo(r);
     assertThat(r).isNotEqualTo(null);
     assertThat(r).isNotEqualTo("another object");
-    assertThat(r).isEqualTo(new ResourceNode(new Project("myProject"), null, Charsets.UTF_8));
+
+    assertThat(r).isEqualTo(new ResourceNode(new TestInputFileBuilder("a","b.c")
+                                                 .setModuleBaseDir(temp.getRoot().toPath()).build()));
   }
 
   @Test
   public void test_hashCode() {
-    ResourceNode r = new ResourceNode(new Project("myProject"), null, Charsets.UTF_8);
-    assertThat(r.hashCode()).isEqualTo("myProject".hashCode());
-
-    r = new ResourceNode(new Project(null), null, Charsets.UTF_8);
-    assertThat(r.hashCode()).isEqualTo(0);
+    ResourceNode r = new ResourceNode(new TestInputFileBuilder("a","b.c")
+                                          .setModuleBaseDir(temp.getRoot().toPath()).build());
+    assertThat(r.hashCode()).isEqualTo("a:b.c".hashCode());
   }
 }

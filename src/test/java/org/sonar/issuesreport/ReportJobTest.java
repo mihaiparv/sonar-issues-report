@@ -21,13 +21,17 @@ package org.sonar.issuesreport;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.sonar.api.batch.SensorContext;
-import org.sonar.api.resources.Project;
+import org.sonar.api.batch.postjob.PostJobContext;
+import org.sonar.api.batch.postjob.PostJobDescriptor;
+import org.sonar.api.config.Configuration;
 import org.sonar.issuesreport.printer.ReportPrinter;
 import org.sonar.issuesreport.report.IssuesReport;
 import org.sonar.issuesreport.report.IssuesReportBuilder;
 
+import java.util.Optional;
+
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.only;
@@ -37,6 +41,8 @@ import static org.mockito.Mockito.when;
 
 public class ReportJobTest {
 
+  private static final String PROP_1 = "prop#1";
+  private static final String PROP_2 = "prop#2";
   private IssuesReportBuilder issuesReportBuilder;
   private ReportPrinter printer1;
   private ReportPrinter printer2;
@@ -45,49 +51,66 @@ public class ReportJobTest {
   @Before
   public void prepare() {
     issuesReportBuilder = mock(IssuesReportBuilder.class);
-    when(issuesReportBuilder.buildReport(any(Project.class))).thenReturn(new IssuesReport());
+    when(issuesReportBuilder.buildReport(any(PostJobContext.class))).thenReturn(new IssuesReport());
     printer1 = mock(ReportPrinter.class);
-    when(printer1.isEnabled()).thenReturn(false);
+    when(printer1.getRequiredProperty()).thenReturn(PROP_1);
     printer2 = mock(ReportPrinter.class);
-    when(printer2.isEnabled()).thenReturn(false);
+    when(printer2.getRequiredProperty()).thenReturn(PROP_2);
 
     job = new ReportJob(issuesReportBuilder, new ReportPrinter[] {printer1, printer2});
   }
 
   @Test
   public void shouldNotBuildReportWhenNoPrinterEnabled() {
-    when(printer1.isEnabled()).thenReturn(false);
-    when(printer2.isEnabled()).thenReturn(false);
+    final Configuration configuration = mock(Configuration.class);
+    when(configuration.getBoolean(any())).thenReturn(Optional.empty());
 
-    job.executeOn(mock(Project.class), mock(SensorContext.class));
+    final PostJobContext jobContext = mock(PostJobContext.class);
+    when(jobContext.config()).thenReturn(configuration);
+    job.execute(jobContext);
 
-    verify(issuesReportBuilder, never()).buildReport(any(Project.class));
+    verify(issuesReportBuilder, never()).buildReport(any(PostJobContext.class));
     verify(printer1, never()).print(any(IssuesReport.class));
     verify(printer2, never()).print(any(IssuesReport.class));
   }
 
   @Test
   public void shouldPrintOnlyOnEnabledPrinter() {
-    when(printer1.isEnabled()).thenReturn(true);
-    when(printer2.isEnabled()).thenReturn(false);
+    final Configuration configuration = mock(Configuration.class);
+    when(configuration.getBoolean(eq(PROP_1))).thenReturn(Optional.of(Boolean.TRUE));
+    when(configuration.getBoolean(eq(PROP_2))).thenReturn(Optional.of(Boolean.FALSE));
 
-    job.executeOn(mock(Project.class), mock(SensorContext.class));
+    final PostJobContext jobContext = mock(PostJobContext.class);
+    when(jobContext.config()).thenReturn(configuration);
+    job.execute(jobContext);
 
-    verify(issuesReportBuilder, only()).buildReport(any(Project.class));
+    verify(issuesReportBuilder, only()).buildReport(jobContext);
     verify(printer1, times(1)).print(any(IssuesReport.class));
     verify(printer2, never()).print(any(IssuesReport.class));
   }
 
   @Test
   public void shouldBuildReportOnlyOnceWhenTwoPrintersEnabled() {
-    when(printer1.isEnabled()).thenReturn(true);
-    when(printer2.isEnabled()).thenReturn(true);
+    final Configuration configuration = mock(Configuration.class);
+    when(configuration.getBoolean(eq(PROP_1))).thenReturn(Optional.of(Boolean.TRUE));
+    when(configuration.getBoolean(eq(PROP_2))).thenReturn(Optional.of(Boolean.TRUE));
 
-    job.executeOn(mock(Project.class), mock(SensorContext.class));
+    final PostJobContext jobContext = mock(PostJobContext.class);
+    when(jobContext.config()).thenReturn(configuration);
+    job.execute(jobContext);
 
-    verify(issuesReportBuilder, only()).buildReport(any(Project.class));
+    verify(issuesReportBuilder, only()).buildReport(jobContext);
     verify(printer1, times(1)).print(any(IssuesReport.class));
     verify(printer2, times(1)).print(any(IssuesReport.class));
   }
 
+  @Test
+  public void testRequiredProperties() {
+    PostJobDescriptor descriptor = mock(PostJobDescriptor.class);
+    when(descriptor.name(any())).thenReturn(descriptor);
+
+    job.describe(descriptor);
+
+    verify(descriptor).requireProperties(PROP_1, PROP_2);
+  }
 }

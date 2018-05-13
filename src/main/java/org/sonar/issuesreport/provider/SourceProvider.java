@@ -23,8 +23,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sonar.api.task.TaskExtension;
-import org.sonar.issuesreport.tree.ResourceNode;
+import org.sonar.api.batch.ScannerSide;
+import org.sonar.issuesreport.fs.ResourceNode;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,12 +32,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class SourceProvider implements TaskExtension {
+@ScannerSide
+public class SourceProvider {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceProvider.class);
-
-  public SourceProvider() {
-  }
 
   public List<String> getEscapedSource(ResourceNode resource) {
     File path = resource.getPath();
@@ -47,7 +45,7 @@ public class SourceProvider implements TaskExtension {
     }
     try {
       List<String> lines = FileUtils.readLines(path, resource.getEncoding().toString());
-      List<String> escapedLines = new ArrayList<String>(lines.size());
+      List<String> escapedLines = new ArrayList<>(lines.size());
       for (String line : lines) {
         escapedLines.add(StringEscapeUtils.escapeHtml(line));
       }

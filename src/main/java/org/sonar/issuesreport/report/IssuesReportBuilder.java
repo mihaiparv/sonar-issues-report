@@ -21,61 +21,60 @@ package org.sonar.issuesreport.report;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sonar.api.BatchExtension;
-import org.sonar.api.issue.Issue;
-import org.sonar.api.issue.ProjectIssues;
-import org.sonar.api.resources.Project;
+import org.sonar.api.CoreProperties;
+import org.sonar.api.batch.ScannerSide;
+import org.sonar.api.batch.postjob.PostJobContext;
+import org.sonar.api.batch.postjob.issue.PostJobIssue;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.Rule;
-import org.sonar.api.rules.RuleFinder;
-import org.sonar.api.rules.RulePriority;
-import org.sonar.issuesreport.tree.ResourceNode;
-import org.sonar.issuesreport.tree.ResourceTree;
+import org.sonar.issuesreport.provider.RuleProvider;
+import org.sonar.issuesreport.fs.ResourceNode;
+import org.sonar.issuesreport.fs.InputFilesCollector;
+
+import java.util.Date;
 
 import javax.annotation.CheckForNull;
 
-public class IssuesReportBuilder implements BatchExtension {
+@ScannerSide
+public class IssuesReportBuilder {
 
   private static final Logger LOG = LoggerFactory.getLogger(IssuesReportBuilder.class);
 
-  private final ProjectIssues moduleIssues;
-  private final RuleFinder ruleFinder;
-  private final ResourceTree resourceTree;
+  private final RuleProvider ruleProvider;
+  private final InputFilesCollector inputFilesCollector;
 
-  public IssuesReportBuilder(ProjectIssues moduleIssues, RuleFinder ruleFinder, ResourceTree resourceTree) {
-    this.moduleIssues = moduleIssues;
-    this.ruleFinder = ruleFinder;
-    this.resourceTree = resourceTree;
+  public IssuesReportBuilder(RuleProvider ruleProvider, InputFilesCollector inputFilesCollector) {
+    this.ruleProvider = ruleProvider;
+    this.inputFilesCollector = inputFilesCollector;
   }
 
-  public IssuesReport buildReport(Project project) {
+  public IssuesReport buildReport(PostJobContext context) {
     IssuesReport issuesReport = new IssuesReport();
-    issuesReport.setTitle(project.getName());
-    issuesReport.setDate(project.getAnalysisDate());
+    issuesReport.setTitle(context.config().get(CoreProperties.PROJECT_NAME_PROPERTY).orElse(""));
+    issuesReport.setDate(new Date());
 
-    processIssues(issuesReport, moduleIssues.issues(), false);
-    processIssues(issuesReport, moduleIssues.resolvedIssues(), true);
+    processIssues(issuesReport, context.issues(), false);
+    processIssues(issuesReport, context.resolvedIssues(), true);
 
     return issuesReport;
   }
 
-  private void processIssues(IssuesReport issuesReport, Iterable<Issue> issues, boolean resolved) {
-    for (Issue issue : issues) {
+  private void processIssues(IssuesReport issuesReport, Iterable<PostJobIssue> issues, boolean resolved) {
+    for (PostJobIssue issue : issues) {
       Rule rule = findRule(issue);
-      RulePriority severity = RulePriority.valueOf(issue.severity());
-      ResourceNode resource = resourceTree.getResource(issue.componentKey());
+      ResourceNode resource = inputFilesCollector.getResource(issue.componentKey());
       if (!validate(issue, rule, resource)) {
         continue;
       }
       if (resolved) {
-        issuesReport.addResolvedIssueOnResource(resource, issue, rule, severity);
+        issuesReport.addResolvedIssueOnResource(resource, issue, rule);
       } else {
-        issuesReport.addIssueOnResource(resource, issue, rule, severity);
+        issuesReport.addIssueOnResource(resource, issue, rule);
       }
     }
   }
 
-  private boolean validate(Issue issue, Rule rule, ResourceNode resource) {
+  private boolean validate(PostJobIssue issue, Rule rule, ResourceNode resource) {
     if (rule == null) {
       LOG.warn("Unknow rule for issue {}", issue);
       return false;
@@ -88,9 +87,8 @@ public class IssuesReportBuilder implements BatchExtension {
   }
 
   @CheckForNull
-  private Rule findRule(Issue issue) {
+  private Rule findRule(PostJobIssue issue) {
     RuleKey ruleKey = issue.ruleKey();
-    return ruleFinder.findByKey(ruleKey);
+    return ruleProvider.getRule(ruleKey);
   }
-
 }

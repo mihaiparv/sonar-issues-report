@@ -19,12 +19,14 @@
  */
 package org.sonar.issuesreport;
 
-import org.sonar.api.batch.PostJob;
-import org.sonar.api.batch.SensorContext;
-import org.sonar.api.resources.Project;
+import org.sonar.api.batch.postjob.PostJob;
+import org.sonar.api.batch.postjob.PostJobContext;
+import org.sonar.api.batch.postjob.PostJobDescriptor;
 import org.sonar.issuesreport.printer.ReportPrinter;
 import org.sonar.issuesreport.report.IssuesReport;
 import org.sonar.issuesreport.report.IssuesReportBuilder;
+
+import java.util.Arrays;
 
 public class ReportJob implements PostJob {
 
@@ -36,17 +38,23 @@ public class ReportJob implements PostJob {
     this.printers = printers;
   }
 
-  public void executeOn(Project project, SensorContext context) {
+  @Override
+  public void describe(PostJobDescriptor descriptor) {
+    descriptor.name("Issue Reporter")
+        .requireProperties(Arrays.stream(printers).map(ReportPrinter::getRequiredProperty).toArray(String[]::new));
+  }
+
+  @Override
+  public void execute(PostJobContext context) {
     // For performance only initialize IssuesReport if there is on Printer enabled
     IssuesReport report = null;
     for (ReportPrinter printer : printers) {
-      if (printer.isEnabled()) {
+      if (context.config().getBoolean(printer.getRequiredProperty()).orElse(Boolean.FALSE)) {
         if (report == null) {
-          report = builder.buildReport(project);
+          report = builder.buildReport(context);
         }
         printer.print(report);
       }
     }
   }
-
 }
